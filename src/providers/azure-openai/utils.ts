@@ -1,3 +1,4 @@
+import { DefaultAzureCredential } from '@azure/identity';
 import { AZURE_OPEN_AI } from '../../globals';
 import { Options } from '../../types/requestBody';
 import { OpenAIErrorResponseTransform } from '../openai/utils';
@@ -42,27 +43,12 @@ export async function getAccessTokenFromEntraId(
 
 export async function getAzureManagedIdentityToken(
   resource: string,
-  clientId?: string
+  managedIdentityClientId?: string
 ) {
   try {
-    const response = await fetch(
-      `http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=${encodeURIComponent(resource)}${clientId ? `&client_id=${encodeURIComponent(clientId)}` : ''}`,
-      {
-        method: 'GET',
-        headers: {
-          Metadata: 'true',
-        },
-      }
-    );
-    if (!response.ok) {
-      const errorMessage = await response.text();
-      console.error('getAzureManagedIdentityToken error: ', {
-        message: `Error from Managed ${errorMessage}`,
-      });
-      return undefined;
-    }
-    const data: { access_token: string } = await response.json();
-    return data.access_token;
+    const credential = new DefaultAzureCredential({ managedIdentityClientId });
+    const accessToken = await credential.getToken(resource);
+    return accessToken?.token;
   } catch (error) {
     console.error('getAzureManagedIdentityToken error: ', error);
   }

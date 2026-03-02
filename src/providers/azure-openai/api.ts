@@ -46,7 +46,7 @@ const AzureOpenAIAPIConfig: ProviderAPIConfig = {
     if (azureAuthMode === 'managed') {
       const { azureManagedClientId, azureEntraScope } = providerOptions;
       const resource =
-        azureEntraScope || 'https://cognitiveservices.azure.com/';
+        azureEntraScope || 'https://cognitiveservices.azure.com/.default';
       const accessToken = await getAzureManagedIdentityToken(
         resource,
         azureManagedClientId
