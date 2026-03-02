@@ -29,6 +29,10 @@ export enum StrategyModes {
 interface Strategy {
   mode: StrategyModes;
   onStatusCodes?: Array<number>;
+  stickySession?: {
+    hashFields: string[];
+    ttl?: number;
+  };
   conditions?: {
     query: {
       [key: string]: any;

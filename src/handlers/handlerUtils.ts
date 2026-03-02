@@ -28,6 +28,7 @@ import { ConditionalRouter } from '../services/conditionalRouter';
 import { RouterError } from '../errors/RouterError';
 import { GatewayError } from '../errors/GatewayError';
 import { HookType } from '../middlewares/hooks/types';
+import { selectTargetWithStickySession } from './services/stickyLoadBalancingService';
 
 // Services
 import { CacheResponseObject, CacheService } from './services/cacheService';
@@ -696,6 +697,32 @@ export async function tryTargetsRecursively(
           t.weight = 1;
         }
       });
+
+      const stickyTarget = await selectTargetWithStickySession({
+        targets: currentTarget.targets,
+        stickySession: currentTarget.strategy?.stickySession,
+        request,
+        requestHeaders,
+        currentJsonPath,
+      });
+
+      if (stickyTarget) {
+        const originalIndex =
+          stickyTarget.provider.originalIndex || stickyTarget.index;
+        currentJsonPath = currentJsonPath + `.targets[${originalIndex}]`;
+        response = await tryTargetsRecursively(
+          c,
+          stickyTarget.provider,
+          request,
+          requestHeaders,
+          fn,
+          method,
+          currentJsonPath,
+          currentInheritedConfig
+        );
+        break;
+      }
+
       let totalWeight = currentTarget.targets.reduce(
         (sum: number, provider: any) => sum + provider.weight,
         0

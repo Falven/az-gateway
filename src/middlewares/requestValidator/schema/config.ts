@@ -34,6 +34,12 @@ export const configSchema: any = z
           )
           .optional(),
         default: z.string().optional(),
+        sticky_session: z
+          .object({
+            hash_fields: z.array(z.string()).min(1),
+            ttl: z.number().int().positive().optional(),
+          })
+          .optional(),
       })
       .optional(),
     provider: z
