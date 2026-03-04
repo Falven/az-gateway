@@ -90,6 +90,7 @@ if (runtime === 'node') {
  * Returns a greeting message.
  */
 app.get('/', (c) => c.text('AI Gateway says hey!'));
+app.get('/healthz', (c) => c.json({ status: 'ok' }));
 
 // Use prettyJSON middleware for all routes
 app.use('*', prettyJSON());
