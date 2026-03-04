@@ -1,6 +1,7 @@
 {
-  "name": "@portkey-ai/gateway",
+  "name": "az-gateway",
   "version": "1.15.2",
+  "packageManager": "pnpm@10.30.3",
   "description": "A fast AI gateway by Portkey",
   "repository": {
     "type": "git",
@@ -29,6 +30,7 @@
     "deploy": "wrangler deploy --minify src/index.ts",
     "pretty": "prettier --write \"./**/*.{js,jsx,ts,tsx,json}\"",
     "build": "rollup -c",
+    "image:build": "cd ../.. && uv run build-and-push-image datacontrol/az-gateway ${VERSION:-$npm_package_version} apps/az-gateway/Dockerfile",
     "build-plugins": "tsx plugins/build.ts",
     "prepublishOnly": "npm run build",
     "start:node": "node build/start-server.js",

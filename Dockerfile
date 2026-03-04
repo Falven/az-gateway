@@ -1,50 +1,43 @@
-# Use the official Node.js runtime as a parent image
-FROM node:20-alpine AS build
+# syntax=docker/dockerfile:1.7
+ARG NODE_VERSION=20.19.0-slim
 
-# Set the working directory in the container
+FROM node:${NODE_VERSION} AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+WORKDIR /workspace
+RUN corepack enable
+
+FROM base AS build
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY apps/az-gateway/package.json ./apps/az-gateway/package.json
+COPY apps/az-gateway/patches ./apps/az-gateway/patches
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+  pnpm install --filter ./apps/az-gateway... --frozen-lockfile
+COPY apps/az-gateway/src ./apps/az-gateway/src
+COPY apps/az-gateway/plugins ./apps/az-gateway/plugins
+COPY apps/az-gateway/rollup.config.js ./apps/az-gateway/rollup.config.js
+COPY apps/az-gateway/tsconfig.json ./apps/az-gateway/tsconfig.json
+COPY apps/az-gateway/conf.json ./apps/az-gateway/conf.json
+RUN pnpm --filter ./apps/az-gateway run build
+RUN pnpm deploy --legacy --filter ./apps/az-gateway --prod /prod/az-gateway
+
+FROM base AS runtime
+
+ENV NODE_ENV=production
+ENV PORT=8787
+
+RUN groupadd --gid 10001 app \
+  && useradd --uid 10001 --gid app --create-home --shell /usr/sbin/nologin app
+
 WORKDIR /app
+COPY --from=build --chown=app:app /workspace/apps/az-gateway/build ./build
+COPY --from=build --chown=app:app /prod/az-gateway/node_modules ./node_modules
+COPY --from=build --chown=app:app /prod/az-gateway/package.json ./package.json
 
-# Copy package.json and package-lock.json to the working directory
-COPY package*.json ./
-COPY patches ./
+USER app
 
-# Upgrade system packages
-RUN apk upgrade --no-cache
-
-# Upgrade npm to version 10.9.2
-RUN npm install -g npm@10.9.2
-
-# Install app dependencies
-RUN npm install
-
-# Copy the rest of the application code
-COPY . .
-
-# Build the application and clean up
-RUN npm run build \
-&& rm -rf node_modules \
-&& npm install --omit=dev
-
-# Use the official Node.js runtime as a parent image
-FROM node:20-alpine
-
-# Upgrade system packages
-RUN apk upgrade --no-cache
-
-# Upgrade npm to version 10.9.2
-RUN npm install -g npm@10.9.2
-
-# Set the working directory in the container
-WORKDIR /app
-
-# Copy the build directory, node_modules, and package.json to the working directory
-COPY --from=build /app/build /app/build
-COPY --from=build /app/node_modules /app/node_modules
-COPY --from=build /app/package.json /app/package.json
-COPY --from=build /app/patches /app/patches
-
-# Expose port 8787
 EXPOSE 8787
+STOPSIGNAL SIGTERM
 
-ENTRYPOINT ["npm"]
+ENTRYPOINT ["pnpm"]
 CMD ["run", "start:node"]
